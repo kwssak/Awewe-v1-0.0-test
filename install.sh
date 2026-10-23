@@ -16,7 +16,7 @@ fi
 
 echo "[1/8] deps"
 apt-get update -y
-apt-get install -y git curl wget unzip jq uuidgen
+apt-get install -y git curl wget unzip jq uuid-runtime
 
 echo "[2/8] go"
 if ! command -v go >/dev/null 2>&1; then

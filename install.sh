@@ -1,6 +1,3 @@
-cd /root/awewe-panel  # или где у тебя клон репо
-
-cat > install.sh << 'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -95,6 +92,3 @@ echo " ТОКЕН:  $TOKEN"
 echo " XRAY:   $("$XRAY_BIN" version 2>/dev/null | head -n1)"
 echo "=================================================="
 echo "Запомни ТОКЕН — он нужен для входа в панель!"
-EOF
-
-chmod +x install.sh

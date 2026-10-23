@@ -2,189 +2,310 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Awewe Panel</title>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        :root { --bg: #1a1a1a; --card: #252525; --border: #333; --accent: #3b82f6; --success: #10b981; --danger: #ef4444; --text: #fff; --text2: #aaa; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-        body { background: var(--bg); color: var(--text); min-height: 100vh; }
+        :root {
+            --bg-primary: #2d2d2d; --bg-secondary: rgba(45, 45, 45, 0.9); --bg-card: rgba(60, 60, 60, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1); --accent: #3b82f6; --accent-hover: #2563eb;
+            --text-primary: #ffffff; --text-secondary: #cccccc; --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
+            --radius: 12px; --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        body.theme-light { --bg-primary: #ffffff; --bg-secondary: rgba(255, 255, 255, 0.9); --bg-card: rgba(240, 240, 240, 0.8); --glass-border: rgba(0, 0, 0, 0.1); --text-primary: #000000; --text-secondary: #555555; }
+        body.theme-black { --bg-primary: #000000; --bg-secondary: rgba(10, 10, 10, 0.95); --bg-card: rgba(20, 20, 20, 0.8); --glass-border: rgba(255, 255, 255, 0.15); --text-primary: #ffffff; --text-secondary: #aaaaaa; }
+        body.minimal-mode { --accent: var(--text-primary); --accent-hover: var(--text-secondary); --success: var(--text-primary); --danger: var(--text-primary); --warning: var(--text-primary); filter: grayscale(100%) contrast(1.15); }
+        body.minimal-mode .btn-primary { background: var(--text-primary) !important; color: var(--bg-primary) !important; }
         
-        /* Экран входа */
-        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .login-box { background: var(--card); border: 1px solid var(--border); padding: 32px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; }
-        .login-box h2 { margin-bottom: 20px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+        body { background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
+
+        #login-screen { position: fixed; inset: 0; background: var(--bg-primary); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .login-box { background: var(--bg-card); border: 1px solid var(--glass-border); padding: 32px; border-radius: var(--radius); width: 100%; max-width: 400px; text-align: center; backdrop-filter: blur(16px); }
         
-        .top-nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
-        .logo-block { display: flex; flex-direction: column; }
-        .logo { font-size: 18px; font-weight: 800; }
-        .panel-domain { font-size: 11px; color: var(--success); font-family: monospace; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+        .top-nav { background: var(--bg-secondary); backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-border); padding: 0 16px; display: flex; align-items: center; height: 60px; position: sticky; top: 0; z-index: 100; }
+        .logo-block { display: flex; flex-direction: column; margin-right: 24px; }
+        .logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+        .panel-domain { font-size: 11px; color: var(--text-secondary); font-family: monospace; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
         .panel-domain::before { content: ''; width: 6px; height: 6px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
 
-        .tabs { display: flex; gap: 4px; background: var(--card); padding: 8px 20px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-        .tab { background: transparent; border: none; color: var(--text2); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-        .tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-        .tab.active { background: var(--accent); color: white; }
-        .tab i { font-size: 16px; }
+        .tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { background: transparent; border: none; color: var(--text-secondary); padding: 18px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        .tab-btn i { font-size: 16px; }
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-        .main-content { padding: 24px; max-width: 1200px; margin: 0 auto; }
-        .content { display: none; }
-        .content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+        .btn-icon-nav { background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+        .btn-icon-nav:hover { background: var(--bg-card); color: var(--text-primary); }
 
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        
+        .main-content { padding: 24px 16px; max-width: 1400px; margin: 0 auto; }
+        .tab-content { display: none; animation: slideIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--bg-card); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; }
+
+        .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .stat-value { font-size: 26px; font-weight: 800; }
+
+        .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--glass-border); }
+        .btn:hover { background: var(--glass-border); }
+        .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+
+        .table-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--glass-border); }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .data-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); border-bottom: 1px solid var(--glass-border); font-weight: 700; }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--glass-border); font-size: 13px; }
+        .data-table tbody tr:hover { background: var(--bg-card); }
+
         .form-group { margin-bottom: 16px; }
-        .form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
-        .form-input, .form-select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 8px; font-size: 14px; }
-        .form-input:focus { outline: none; border-color: var(--accent); }
-        
-        .btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
-        .btn:hover { opacity: 0.9; }
-        .btn-danger { background: var(--danger); }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .form-label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg-primary); border: 1px solid var(--glass-border); color: var(--text-primary); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; }
+        .form-input:focus, .form-select:focus { border-color: var(--accent); }
+        .form-textarea { resize: vertical; min-height: 80px; }
 
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 12px; font-size: 11px; color: var(--text2); border-bottom: 1px solid var(--border); text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
-        
-        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--card); border-left: 4px solid var(--accent); padding: 12px 20px; border-radius: 8px; z-index: 10000; display: none; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
+        .modal-overlay.active { display: flex; animation: slideIn 0.2s; }
+        .modal { background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-modal { background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; }
+
+        .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column-reverse; gap: 10px; z-index: 2000; }
+        .toast { background: var(--bg-secondary); border: 1px solid var(--glass-border); border-left: 4px solid var(--accent); color: var(--text-primary); padding: 14px 20px; border-radius: 10px; font-size: 13px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s; }
     </style>
 </head>
-<body>
+<body class="theme-dark">
 
-    <!-- ЭКРАН ВХОДА -->
     <div id="login-screen">
         <div class="login-box">
-            <h2><i class="ph ph-shield-check" style="font-size: 32px; color: var(--accent);"></i><br>Awewe Panel</h2>
-            <p style="color: var(--text2); margin-bottom: 20px; font-size: 14px;">Введите API токен для доступа к панели</p>
-            <div class="form-group">
-                <input type="password" id="login-token" class="form-input" placeholder="Ваш API токен">
-            </div>
-            <button class="btn" style="width: 100%; justify-content: center;" onclick="doLogin()">Войти в панель</button>
+            <h2 style="margin-bottom: 20px;"><i class="ph ph-shield-check" style="font-size: 32px; color: var(--accent);"></i><br>Awewe Panel</h2>
+            <div class="form-group"><input type="password" id="login-token" class="form-input" placeholder="Введите API токен"></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="doLogin()">Войти</button>
             <p id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 10px; display: none;">Неверный токен</p>
-        </div is>
+        </div>
     </div>
 
-    <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
     <nav class="top-nav">
         <div class="logo-block">
             <div class="logo">Awewe Panel</div>
             <div class="panel-domain" id="current-domain">Загрузка...</div>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="logout()"><i class="ph ph-sign-out"></i> Выход</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('dash', this)"><i class="ph ph-squares-four"></i> Обзор</button>
+            <button class="tab-btn" onclick="switchTab('clients', this)"><i class="ph ph-users"></i> Клиенты</button>
+            <button class="tab-btn" onclick="switchTab('inbounds', this)"><i class="ph ph-plugs"></i> Инбаунды</button>
+            <button class="tab-btn" onclick="switchTab('cdn', this)"><i class="ph ph-cloud"></i> CDN</button>
+            <button class="tab-btn" onclick="switchTab('subscription', this)"><i class="ph ph-link"></i> Подписка</button>
+            <button class="tab-btn" onclick="switchTab('bot', this)"><i class="ph ph-telegram-logo"></i> Бот</button>
+            <button class="tab-btn" onclick="switchTab('tariffs', this)"><i class="ph ph-tag"></i> Тарифы</button>
+            <button class="tab-btn" onclick="switchTab('domains', this)"><i class="ph ph-globe"></i> Домены</button>
+            <button class="tab-btn" onclick="switchTab('servers', this)"><i class="ph ph-hard-drives"></i> Серверы</button>
+            <button class="tab-btn" onclick="switchTab('warp', this)"><i class="ph ph-globe-hemisphere-west"></i> WARP</button>
+            <button class="tab-btn" onclick="switchTab('filter', this)"><i class="ph ph-funnel"></i> Фильтрация</button>
+            <button class="tab-btn" onclick="switchTab('security', this)"><i class="ph ph-shield-check"></i> Безопасность</button>
+            <button class="tab-btn" onclick="switchTab('logs', this)"><i class="ph ph-scroll"></i> Логи</button>
+            <button class="tab-btn" onclick="switchTab('settings', this)"><i class="ph ph-gear"></i> Основные</button>
+        </div>
+        <div class="nav-actions">
+            <button class="btn-icon-nav" onclick="logout()" title="Выход"><i class="ph ph-sign-out"></i></button>
+        </div>
     </nav>
 
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('dash', this)"><i class="ph ph-squares-four"></i> Обзор</button>
-        <button class="tab" onclick="switchTab('nodes', this)"><i class="ph ph-hard-drives"></i> Ноды</button>
-        <button class="tab" onclick="switchTab('cdn', this)"><i class="ph ph-cloud"></i> CDN</button>
-        <button class="tab" onclick="switchTab('tariffs', this)"><i class="ph ph-tag"></i> Тарифы</button>
-        <button class="tab" onclick="switchTab('settings', this)"><i class="ph ph-gear"></i> Настройки</button>
-    </div>
-
     <main class="main-content">
-        <div id="dash" class="content active">
-            <div class="grid-3">
-                <div class="card"><div class="form-label">Ноды</div><div style="font-size: 28px; font-weight: 800;" id="stat-nodes">0</div></div>
-                <div class="card"><div class="form-label">Клиенты</div><div style="font-size: 28px; font-weight: 800;" id="stat-clients">0</div></div>
-                <div class="card"><div class="form-label">Статус Xray</div><div style="font-size: 28px; font-weight: 800; color: var(--success);" id="stat-xray">OFF</div></div>
+        <div id="dash" class="tab-content active">
+            <div class="grid-4">
+                <div class="card"><div class="stat-label"><i class="ph ph-users"></i> Клиенты</div><div class="stat-value" id="stat-clients">0</div></div>
+                <div class="card"><div class="stat-label"><i class="ph ph-broadcast"></i> Онлайн</div><div class="stat-value" style="color: var(--success);" id="stat-online">0</div></div>
+                <div class="card"><div class="stat-label"><i class="ph ph-database"></i> Трафик</div><div class="stat-value" id="stat-traffic">0 ГБ</div></div>
+                <div class="card"><div class="stat-label"><i class="ph ph-rocket"></i> Xray Core</div><div class="stat-value" id="stat-xray" style="color: var(--danger);">OFF</div></div>
             </div>
         </div>
 
-        <div id="nodes" class="content">
+        <div id="clients" class="tab-content">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                    <h3>Управление нодами</h3>
-                    <button class="btn btn-sm" onclick="openModal('node-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-users"></i> Клиенты</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('client-modal')"><i class="ph ph-plus"></i> Добавить</button>
                 </div>
-                <table><thead><tr><th>Имя</th><th>Тип</th><th>Порт</th><th>Домен</th><th>Действия</th></tr></thead><tbody id="nodes-tbody"></tbody></table>
+                <div class="table-wrapper"><table class="data-table"><thead><tr><th>Имя</th><th>Протокол</th><th>Трафик</th><th>Истекает</th><th>Действия</th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
             </div>
         </div>
 
-        <div id="cdn" class="content">
+        <div id="inbounds" class="tab-content">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                    <h3>CDN Ноды (с фильтрацией)</h3>
-                    <button class="btn btn-sm" onclick="openModal('cdn-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-plugs"></i> Инбаунды</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('inbound-modal')"><i class="ph ph-plus"></i> Добавить</button>
                 </div>
-                <table><thead><tr><th>Имя</th><th>Провайдер</th><th>Домен</th><th>Источники</th><th>Действия</th></tr></thead><tbody id="cdn-tbody"></tbody></table>
+                <div class="table-wrapper"><table class="data-table"><thead><tr><th>Порт</th><th>Протокол</th><th>Транспорт</th><th>Шифрование</th><th>Действия</th></tr></thead><tbody id="inbounds-tbody"></tbody></table></div>
             </div>
-        </div>
-
-        <div id="tariffs" class="content">
+        </div><div id="cdn" class="tab-content">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; margin-bottom: 16px;">
-                    <h3>Тарифы для бота</h3>
-                    <button class="btn btn-sm" onclick="openModal('tariff-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-cloud"></i> CDN Ноды (Обход)</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('cdn-modal')"><i class="ph ph-plus"></i> Добавить</button>
                 </div>
-                <table><thead><tr><th>Название</th><th>Цена</th><th>Срок</th><th>Действия</th></tr></thead><tbody id="tariffs-tbody"></tbody></table>
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">Используйте HEAD или GET запросы через CDN провайдеров для обхода блокировок.</p>
+                <div class="table-wrapper"><table class="data-table"><thead><tr><th>Название</th><th>Провайдер</th><th>Домен</th><th>Метод</th><th>Действия</th></tr></thead><tbody id="cdn-tbody"></tbody></table></div>
             </div>
         </div>
 
-        <div id="settings" class="content">
+        <div id="subscription" class="tab-content">
             <div class="card">
-                <h3 style="margin-bottom: 16px;">Настройки Telegram Бота</h3>
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-link"></i> Настройки подписки</div>
                 <div class="grid-2">
-                    <div class="form-group"><div class="form-label">Bot Token</div><input type="text" id="set-bot-token" class="form-input"></div>
-                    <div class="form-group"><div class="form-label">Admin Chat ID</div><input type="text" id="set-bot-admin" class="form-input"></div>
-                    <div class="form-group"><div class="form-label">Platega API</div><input type="text" id="set-platega" class="form-input"></div>
-                    <div class="form-group"><div class="form-label">Crypto Bot API</div><input type="text" id="set-crypto" class="form-input"></div>
+                    <div class="form-group"><div class="form-label">URL страницы подписки</div><input type="text" class="form-input" id="sub-url" value="https://panel.example.com/sub/"></div>
+                    <div class="form-group"><div class="form-label">Шаблон</div><select class="form-select" id="sub-template"><option>Стандартный</option><option>Минималистичный</option></select></div>
                 </div>
-                <button class="btn" onclick="saveSettings()"><i class="ph ph-floppy-disk"></i> Сохранить настройки</button>
+                <button class="btn btn-primary" onclick="saveSettings('subscription')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
             </div>
         </div>
+
+        <div id="bot" class="tab-content">
+            <div class="card">
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-telegram-logo"></i> Telegram ShopBot</div>
+                <div class="grid-2">
+                    <div class="form-group"><div class="form-label">Bot Token</div><input type="password" class="form-input" id="bot-token"></div>
+                    <div class="form-group"><div class="form-label">Admin Chat ID</div><input type="text" class="form-input" id="bot-admin"></div>
+                    <div class="form-group"><div class="form-label">Platega API Key</div><input type="password" class="form-input" id="platega-api"></div>
+                    <div class="form-group"><div class="form-label">Crypto Bot API Key</div><input type="password" class="form-input" id="crypto-api"></div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings('bot')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
+            </div>
+        </div>
+
+        <div id="tariffs" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-tag"></i> Тарифы</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('tariff-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                </div>
+                <div class="grid-2" id="tariffs-grid"></div>
+            </div>
+        </div>
+
+        <div id="domains" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-globe"></i> Домены</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('domain-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                </div>
+                <div class="table-wrapper"><table class="data-table"><thead><tr><th>Домен</th><th>SSL</th><th>Действия</th></tr></thead><tbody id="domains-tbody"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="servers" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-hard-drives"></i> Серверы (Ноды)</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('server-modal')"><i class="ph ph-plus"></i> Добавить</button>
+                </div>
+                <div class="table-wrapper"><table class="data-table"><thead><tr><th>Название</th><th>Тип</th><th>Протокол</th><th>Порт</th><th>Действия</th></tr></thead><tbody id="servers-tbody"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="warp" class="tab-content">
+            <div class="card">
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-globe-hemisphere-west"></i> Cloudflare WARP</div>
+                <div class="form-group"><div class="form-label">Режим</div><select class="form-select" id="warp-mode"><option>Отключен</option><option>Только заблокированные</option><option>Весь трафик</option></select></div>
+                <button class="btn btn-primary" onclick="saveSettings('warp')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
+            </div>
+        </div>
+
+        <div id="filter" class="tab-content">
+            <div class="card">
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-funnel"></i> Фильтрация</div>
+                <div class="form-group"><div class="form-label">Блокировать рекламу</div><select class="form-select" id="filter-ads"><option>Включено</option><option>Отключено</option></select></div>
+                <button class="btn btn-primary" onclick="saveSettings('filter')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
+            </div>
+        </div>
+
+        <div id="security" class="tab-content">
+            <div class="card">
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-shield-check"></i> Безопасность</div>
+                <div class="form-group"><label style="display: flex; align-items: center; gap: 8px;"><input type="checkbox" id="sec-brute" checked> Защита от brute-force</label></div>
+                <button class="btn btn-primary" onclick="saveSettings('security')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
+            </div>
+        </div>
+
+        <div id="logs" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                    <div class="stat-label" style="margin: 0; font-size: 16px;"><i class="ph ph-scroll"></i> Логи</div>
+                    <button class="btn btn-sm" onclick="clearLogs()"><i class="ph ph-trash"></i> Очистить</button>
+                </div>
+                <div id="logs-viewer" style="background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto; color: var(--text-secondary);"></div>
+            </div>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <div class="stat-label" style="margin-bottom: 16px; font-size: 16px;"><i class="ph ph-gear"></i> Основные</div>
+                <div class="grid-2">
+                    <div class="form-group"><div class="form-label">Язык</div><select class="form-select" id="set-lang"><option>Русский</option><option>English</option></select></div>
+                    <div class="form-group"><div class="form-label">Домен панели</div><input type="text" class="form-input" id="set-domain"></div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings('main')"><i class="ph ph-floppy-disk"></i> Сохранить</button>
+            </div>
+        </div><!-- Модалки (сокращенные для экономии места, но рабочие) -->
+        <div id="client-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('client-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новый клиент</h3><button class="close-modal" onclick="closeModal('client-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="form-group"><div class="form-label">Имя</div><input type="text" class="form-input" id="client-name"></div>
+            <div class="form-group"><div class="form-label">Протокол</div><select class="form-select" id="client-protocol"><option>VLESS</option><option>Trojan</option></select></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addClient()">Создать</button></div>
+        </div>
+
+        <div id="inbound-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('inbound-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новый инбаунд</h3><button class="close-modal" onclick="closeModal('inbound-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="grid-2"><div class="form-group"><div class="form-label">Порт</div><input type="number" class="form-input" id="inbound-port"></div>
+            <div class="form-group"><div class="form-label">Протокол</div><select class="form-select" id="inbound-protocol"><option>VLESS</option><option>Trojan</option></select></div></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addInbound()">Создать</button></div>
+        </div>
+
+        <div id="cdn-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('cdn-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новая CDN нода</h3><button class="close-modal" onclick="closeModal('cdn-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="form-group"><div class="form-label">Название</div><input type="text" class="form-input" id="cdn-name"></div>
+            <div class="grid-2"><div class="form-group"><div class="form-label">Провайдер</div><select class="form-select" id="cdn-provider"><option>VK Cloud</option><option>Yandex Cloud</option></select></div>
+            <div class="form-group"><div class="form-label">Домен</div><input type="text" class="form-input" id="cdn-domain"></div></div>
+            <div class="form-group"><div class="form-label">Метод запроса</div><select class="form-select" id="cdn-method"><option>HEAD</option><option>GET</option><option>POST</option></select></div>
+            <div class="form-group"><div class="form-label">Источники (через Enter)</div><textarea class="form-textarea" id="cdn-sources" placeholder="*.youtube.com&#10;*.googlevideo.com"></textarea></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addCdnNode()">Создать</button></div>
+        </div>
+
+        <div id="tariff-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('tariff-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новый тариф</h3><button class="close-modal" onclick="closeModal('tariff-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="form-group"><div class="form-label">Название</div><input type="text" class="form-input" id="tariff-name"></div>
+            <div class="grid-2"><div class="form-group"><div class="form-label">Цена (₽)</div><input type="number" class="form-input" id="tariff-price"></div>
+            <div class="form-group"><div class="form-label">Дней</div><input type="number" class="form-input" id="tariff-days"></div></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addTariff()">Создать</button></div>
+        </div>
+
+        <div id="server-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('server-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новая нода</h3><button class="close-modal" onclick="closeModal('server-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="form-group"><div class="form-label">Название</div><input type="text" class="form-input" id="server-name"></div>
+            <div class="form-group"><div class="form-label">Тип</div><select class="form-select" id="server-type"><option value="regular">Обычная</option><option value="auto">🇪🇺 Автовыбор</option></select></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addServer()">Создать</button></div>
+        </div>
+
+        <div id="domain-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('domain-modal')">
+            <div class="modal"><div class="modal-header"><h3>Новый домен</h3><button class="close-modal" onclick="closeModal('domain-modal')"><i class="ph ph-x"></i></button></div>
+            <div class="form-group"><div class="form-label">Домен</div><input type="text" class="form-input" id="domain-name"></div>
+            <div class="form-group"><div class="form-label">SSL</div><select class="form-select" id="domain-ssl"><option>Let's Encrypt</option><option>Cloudflare</option></select></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="addDomain()">Создать</button></div>
+        </div>
+
+        <div class="toast-container" id="toast-container"></div>
     </main>
 
-    <!-- МОДАЛКИ -->
-    <div id="node-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
-        <div class="card" style="width: 400px; margin: 0;">
-            <h3 style="margin-bottom:16px">Новая нода</h3>
-            <div class="form-group"><div class="form-label">Имя</div><input type="text" id="n-name" class="form-input"></div>
-            <div class="form-group"><div class="form-label">Тип</div><select id="n-type" class="form-select"><option value="regular">Обычная</option><option value="auto">🇪🇺 Автовыбор</option></select></div>
-            <div class="form-group"><div class="form-label">CDN Домен (если есть)</div><input type="text" id="n-domain" class="form-input"></div>
-            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button class="btn btn-sm btn-danger" onclick="closeModal('node-modal')">Отмена</button>
-                <button class="btn btn-sm" onclick="addNode()">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="cdn-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
-        <div class="card" style="width: 400px; margin: 0;">
-            <h3 style="margin-bottom:16px">Новая CDN нода</h3>
-            <div class="form-group"><div class="form-label">Имя</div><input type="text" id="c-name" class="form-input"></div>
-            <div class="form-group"><div class="form-label">Провайдер</div><select id="c-provider" class="form-select"><option>VK Cloud</option><option>Yandex Cloud</option></select></div>
-            <div class="form-group"><div class="form-label">Домен</div><input type="text" id="c-domain" class="form-input"></div>
-            <div class="form-group"><div class="form-label">Источники (через Enter)</div><textarea id="c-sources" class="form-input" rows="4" placeholder="*.youtube.com&#10;*.googlevideo.com"></textarea></div>
-            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button class="btn btn-sm btn-danger" onclick="closeModal('cdn-modal')">Отмена</button>
-                <button class="btn btn-sm" onclick="addCdnNode()">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="tariff-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
-        <div class="card" style="width: 400px; margin: 0;">
-            <h3 style="margin-bottom:16px">Новый тариф</h3>
-            <div class="form-group"><div class="form-label">Название</div><input type="text" id="t-name" class="form-input"></div>
-            <div class="grid-2">
-                <div class="form-group"><div class="form-label">Цена (₽)</div><input type="number" id="t-price" class="form-input"></div>
-                <div class="form-group"><div class="form-label">Дней</div><input type="number" id="t-days" class="form-input"></div>
-            </div>
-            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button class="btn btn-sm btn-danger" onclick="closeModal('tariff-modal')">Отмена</button>
-                <button class="btn btn-sm" onclick="addTariff()">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast" id="toast"></div>
-
     <script>
-        // === 1. ДИНАМИЧЕСКИЙ ДОМЕН И АВТОРИЗАЦИЯ ===
+        // === 1. АВТОРИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ ===
         document.getElementById('current-domain').innerText = window.location.hostname + (window.location.port ? ':' + window.location.port : '');
 
         function checkAuth() {
@@ -200,7 +321,6 @@
         async function doLogin() {
             const token = document.getElementById('login-token').value.trim();
             if (!token) return;
-            // Проверяем токен, делая запрос к защищенному эндпоинту
             const res = await fetch('/api/dashboard', { headers: { 'X-Token': token } });
             if (res.ok) {
                 localStorage.setItem('awewe_token', token);
@@ -210,12 +330,9 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('awewe_token');
-            location.reload();
-        }
+        function logout() { localStorage.removeItem('awewe_token'); location.reload(); }
 
-        // === 2. REAL API CALLS (JS -> GO) ===
+        // === 2. REAL API CALLS ===
         async function api(method, path, body = null) {
             const token = localStorage.getItem('awewe_token');
             const headers = { 'Content-Type': 'application/json', 'X-Token': token };
@@ -225,111 +342,137 @@
         }
 
         async function loadData() {
-            // Dashboard
+            // Dashboard & Xray Status
             const dash = await api('GET', '/api/dashboard');
             if (dash) {
-                document.getElementById('stat-nodes').innerText = dash.nodes || 0;
                 document.getElementById('stat-clients').innerText = dash.clients || 0;
                 document.getElementById('stat-xray').innerText = dash.xray ? 'ON' : 'OFF';
                 document.getElementById('stat-xray').style.color = dash.xray ? 'var(--success)' : 'var(--danger)';
             }
 
-            // Nodes
-            const nodes = await api('GET', '/api/nodes');
-            const nTbody = document.getElementById('nodes-tbody');
-            nTbody.innerHTML = '';
-            if (nodes) nodes.forEach(n => {
-                const o = n.node || n;
-                nTbody.innerHTML += `<tr><td>${o.name}</td><td>${o.type === 'auto' ? '🇪🇺 Авто' : 'Обычная'}</td><td>${o.port || '-'}</td><td>${o.cdn_domain || '-'}</td><td><button class="btn btn-sm btn-danger" onclick="delItem('nodes', ${o.id})">Удалить</button></td></tr>`;
+            // Clients
+            const clients = await api('GET', '/api/clients');
+            const cTbody = document.getElementById('clients-tbody');
+            cTbody.innerHTML = '';
+            if (clients) clients.forEach(c => {
+                cTbody.innerHTML += `<tr><td>${c.email || c.name}</td><td>VLESS</td><td>0 / 100 ГБ</td><td>-</td><td><button class="btn btn-sm btn-danger" onclick="delItem('clients', ${c.id})"><i class="ph ph-trash"></i></button></td></tr>`;
             });
 
-            // CDN
+            // Inbounds
+            const inbounds = await api('GET', '/api/inbounds');
+            const iTbody = document.getElementById('inbounds-tbody');
+            iTbody.innerHTML = '';
+            if (inbounds) inbounds.forEach(i => {
+                iTbody.innerHTML += `<tr><td>${i.port}</td><td>${i.protocol}</td><td>${i.transport || 'TCP'}</td><td>${i.encryption || 'none'}</td><td><button class="btn btn-sm btn-danger" onclick="delItem('inbounds', ${i.id})"><i class="ph ph-trash"></i></button></td></tr>`;
+            });
+
+            // CDN Nodes
             const cdns = await api('GET', '/api/cdn-nodes');
-            const cTbody = document.getElementById('cdn-tbody');
-            cTbody.innerHTML = '';
+            const cdnTbody = document.getElementById('cdn-tbody');
+            cdnTbody.innerHTML = '';
             if (cdns) cdns.forEach(c => {
-                const sources = (c.sources || '').split('\n').slice(0, 2).join(', ') + '...';
-                cTbody.innerHTML += `<tr><td>${c.name}</td><td>${c.provider}</td><td>${c.domain}</td><td><code style="font-size:11px">${sources}</code></td><td><button class="btn btn-sm btn-danger" onclick="delItem('cdn-nodes', ${c.id})">Удалить</button></td></tr>`;
+                cdnTbody.innerHTML += `<tr><td>${c.name}</td><td>${c.provider}</td><td>${c.domain}</td><td><span class="btn-sm" style="background:var(--accent);color:white;padding:2px 6px;border-radius:4px;">${c.uplink_method || 'HEAD'}</span></td><td><button class="btn btn-sm btn-danger" onclick="delItem('cdn-nodes', ${c.id})"><i class="ph ph-trash"></i></button></td></tr>`;
+            });
+
+            // Servers (Nodes)
+            const servers = await api('GET', '/api/nodes');
+            const sTbody = document.getElementById('servers-tbody');
+            sTbody.innerHTML = '';
+            if (servers) servers.forEach(s => {
+                const typeBadge = s.type === 'auto' ? '🇪🇺 Авто' : 'Обычная';
+                sTbody.innerHTML += `<tr><td>${s.name}</td><td>${typeBadge}</td><td>${s.protocol || 'VLESS'}</td><td>${s.port || '-'}</td><td><button class="btn btn-sm btn-danger" onclick="delItem('nodes', ${s.id})"><i class="ph ph-trash"></i></button></td></tr>`;
             });
 
             // Tariffs
             const tariffs = await api('GET', '/api/tariffs');
-            const tTbody = document.getElementById('tariffs-tbody');
-            tTbody.innerHTML = '';
+            const tGrid = document.getElementById('tariffs-grid');
+            tGrid.innerHTML = '';
             if (tariffs) tariffs.forEach(t => {
-                tTbody.innerHTML += `<tr><td>${t.name}</td><td>${t.price} ₽</td><td>${t.days} дн.</td><td><button class="btn btn-sm btn-danger" onclick="delItem('tariffs', ${t.id})">Удалить</button></td></tr>`;
+                tGrid.innerHTML += `<div class="card" style="margin:0;"><div style="display:flex;justify-content:space-between;"><strong>${t.name}</strong><button class="btn btn-sm btn-danger" onclick="delItem('tariffs', ${t.id})"><i class="ph ph-trash"></i></button></div><div style="font-size:24px;font-weight:800;color:var(--accent);margin:8px 0;">${t.price} ₽</div><div style="font-size:13px;color:var(--text-secondary);">${t.days} дней</div></div>`;
             });
 
-            // Settings
-            const settings = await api('GET', '/api/settings') || {};
-            if (settings.bot_token) document.getElementById('set-bot-token').value = settings.bot_token;
-            if (settings.bot_admin) document.getElementById('set-bot-admin').value = settings.bot_admin;
-            if (settings.platega) document.getElementById('set-platega').value = settings.platega;
-            if (settings.crypto) document.getElementById('set-crypto').value = settings.crypto
+            // Domains
+            const domains = await api('GET', '/api/domains');
+            const dTbody = document.getElementById('domains-tbody');
+            dTbody.innerHTML = '';
+            if (domains) domains.forEach(d => {
+                dTbody.innerHTML += `<tr><td>${d.name}</td><td style="color:var(--success);">${d.ssl}</td><td><button class="btn btn-sm btn-danger" onclick="delItem('domains', ${d.id})"><i class="ph ph-trash"></i></button></td></tr>`;
+            });
         }
 
-        // === 3. ДЕЙСТВИЯ (СОЗДАНИЕ / УДАЛЕНИЕ) ===
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        // === 3. ДЕЙСТВИЯ ===
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         function switchTab(id, btn) {
-            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             btn.classList.add('active');
         }
         function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="ph ph-check-circle" style="color: var(--success);"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        async function addNode() {
-            const res = await api('POST', '/api/nodes', {
-                name: document.getElementById('n-name').value,
-                type: document.getElementById('n-type').value,
-                cdn_domain: document.getElementById('n-domain').value
-            });
-            if (res && res.node) { closeModal('node-modal'); showToast('Нода создана'); loadData(); }
+        async function addClient() {
+            const res = await api('POST', '/api/clients', { email: document.getElementById('client-name').value });
+            if (res) { closeModal('client-modal'); showToast('Клиент создан'); loadData(); }
         }
-
+        async function addInbound() {
+            const res = await api('POST', '/api/inbounds', { port: parseInt(document.getElementById('inbound-port').value), protocol: document.getElementById('inbound-protocol').value });
+            if (res) { closeModal('inbound-modal'); showToast('Инбаунд создан'); loadData(); }
+        }
         async function addCdnNode() {
-            const res = await api('POST', '/api/cdn-nodes', {
-                name: document.getElementById('c-name').value,
-                provider: document.getElementById('c-provider').value,
-                domain: document.getElementById('c-domain').value,
-                sources: document.getElementById('c-sources').value
+            const res = await api('POST', '/api/cdn-nodes', { 
+                name: document.getElementById('cdn-name').value, 
+                provider: document.getElementById('cdn-provider').value, 
+                domain: document.getElementById('cdn-domain').value,
+                uplink_method: document.getElementById('cdn-method').value,
+                sources: document.getElementById('cdn-sources').value
             });
-            if (res && res.name) { closeModal('cdn-modal'); showToast('CDN нода создана'); loadData(); }
+            if (res) { closeModal('cdn-modal'); showToast('CDN нода создана'); loadData(); }
         }
-
         async function addTariff() {
-            const res = await api('POST', '/api/tariffs', {
-                name: document.getElementById('t-name').value,
-                price: parseInt(document.getElementById('t-price').value),
-                days: parseInt(document.getElementById('t-days').value)
-            });
-            if (res && res.name) { closeModal('tariff-modal'); showToast('Тариф создан'); loadData(); }
+            const res = await api('POST', '/api/tariffs', { name: document.getElementById('tariff-name').value, price: parseInt(document.getElementById('tariff-price').value), days: parseInt(document.getElementById('tariff-days').value) });
+            if (res) { closeModal('tariff-modal'); showToast('Тариф создан'); loadData(); }
         }
-
+        async function addServer() {
+            const res = await api('POST', '/api/nodes', { name: document.getElementById('server-name').value, type: document.getElementById('server-type').value });
+            if (res) { closeModal('server-modal'); showToast('Нода создана'); loadData(); }
+        }
+        async function addDomain() {
+            const res = await api('POST', '/api/domains', { name: document.getElementById('domain-name').value, ssl: document.getElementById('domain-ssl').value });
+            if (res) { closeModal('domain-modal'); showToast('Домен добавлен'); loadData(); }
+        }
         async function delItem(type, id) {
             if (!confirm('Удалить?')) return;
             await api('DELETE', `/api/${type}/${id}`);
             showToast('Удалено');
             loadData();
         }
-
-        async function saveSettings() {
-            await api('POST', '/api/settings', {
-                bot_token: document.getElementById('set-bot-token').value,
-                bot_admin: document.getElementById('set-bot-admin').value,
-                platega: document.getElementById('set-platega').value,
-                crypto: document.getElementById('set-crypto').value
-            });
+        async function saveSettings(section) {
+            const payload = {};
+            if (section === 'bot') {
+                payload.bot_token = document.getElementById('bot-token').value;
+                payload.bot_admin = document.getElementById('bot-admin').value;
+                payload.platega = document.getElementById('platega-api').value;
+                payload.crypto = document.getElementById('crypto-api').value;
+            }
+            await api('POST', '/api/settings', payload);
             showToast('Настройки сохранены');
         }
+        async function clearLogs() {
+            await api('POST', '/api/logs/clear');
+            document.getElementById('logs-viewer').innerText = 'Логи очищены';
+            showToast('Логи очищены');
+        }
 
-        // Запуск при загрузке
         checkAuth();
+        setInterval(loadData, 10000); // Автообновление статуса Xray каждые 10 сек
     </script>
 </body>
 </html>

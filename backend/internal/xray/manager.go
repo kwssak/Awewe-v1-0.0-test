@@ -24,7 +24,12 @@ func New(bin, confPath string) *Manager {
 func (m *Manager) buildConfig(nodes []models.Node) map[string]interface{} {
 	inbounds := []map[string]interface{}{}
 	for _, n := range nodes {
-		inbounds = append(inbounds, map[string]interface{}{
+		// Пропускаем автовыбор ноды - они не создают реальных inbound
+		if n.Type == "auto" {
+			continue
+		}
+
+		inbound := map[string]interface{}{
 			"listen":   "0.0.0.0",
 			"port":     n.Port,
 			"protocol": "vless",
@@ -33,8 +38,8 @@ func (m *Manager) buildConfig(nodes []models.Node) map[string]interface{} {
 				"decryption": "none",
 			},
 			"streamSettings": map[string]interface{}{
-				"network":      "xhttp",
-				"security":     "none",
+				"network":  "xhttp",
+				"security": "none",
 				"xhttpSettings": map[string]interface{}{
 					"path":             n.Path,
 					"mode":             "auto",
@@ -42,8 +47,22 @@ func (m *Manager) buildConfig(nodes []models.Node) map[string]interface{} {
 				},
 			},
 			"tag": fmt.Sprintf("in-%d", n.ID),
-		})
+		}
+
+		// Добавляем дополнительные параметры если есть
+		if n.Encryption != "" && n.Encryption != "none" {
+			inbound["streamSettings"].(map[string]interface{})["security"] = n.Encryption
+		}
+		if n.Flow != "" && n.Flow != "none" {
+			inbound["settings"].(map[string]interface{})["flow"] = n.Flow
+		}
+		if n.Transport != "" && n.Transport != "TCP" {
+			inbound["streamSettings"].(map[string]interface{})["network"] = n.Transport
+		}
+
+		inbounds = append(inbounds, inbound)
 	}
+
 	return map[string]interface{}{
 		"log":      map[string]interface{}{"loglevel": "warning"},
 		"inbounds": inbounds,

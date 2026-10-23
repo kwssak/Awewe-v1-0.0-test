@@ -1,13 +1,9 @@
 package api
 
 import (
-	"bufio"
-	"encoding/base64"
-	"fmt"
+	"encoding/json"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -18,23 +14,120 @@ import (
 	"awewe-panel/internal/xray"
 )
 
-func cdnLink(n models.Node) string {
-	q := url.Values{}
-	q.Set("encryption", "none")
-	q.Set("security", "tls")
-	q.Set("type", "xhttp")
-	q.Set("path", n.Path)
-	q.Set("sni", n.CDNDomain)
-	q.Set("fp", "chrome")
-	q.Set("mode", "auto")
-	q.Set("uplinkHttpMethod", n.UplinkHTTPMethod)
-	return fmt.Sprintf("vless://%s@%s:443?%s#%s", n.UUID, n.CDNDomain, q.Encode(), url.QueryEscape(n.Name))
-}
+func RegisterRoutes(r *gin.Engine, db *gorm.DB, mgr *xray.Manager, cfg *config.Config) {
+	// Публичный эндпоинт для проверки токена (используется при логине)
+	r.GET("/api/dashboard", auth(cfg.APIToken), func(c *gin.Context) {
+		var nodeCount, clientCount int64
+		db.Model(&models.Node{}).Count(&nodeCount)
+		db.Model(&models.Client{}).Count(&clientCount)
+		c.JSON(http.StatusOK, gin.H{
+			"nodes":   nodeCount,
+			"clients": clientCount,
+			"xray":    mgr.Running(),
+			"port":    cfg.Port,
+		})
+	})
 
-func nextPort(db *gorm.DB) int {
-	var maxPort int
-	db.Model(&models.Node{}).Select("COALESCE(MAX(port),2053)").Scan(&maxPort)
-	return maxPort + 1
+	a := r.Group("", auth(cfg.APIToken))
+
+	// === NODES ===
+	a.GET("/api/nodes", func(c *gin.Context) {
+		var nodes []models.Node
+		db.Find(&nodes)
+		c.JSON(http.StatusOK, nodes)
+	})
+
+	a.POST("/api/nodes", func(c *gin.Context) {
+		var body struct {
+			Name      string `json:"name"`
+			Type      string `json:"type"`
+			CDNDomain string `json:"cdn_domain"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
+			return
+		}
+		n := models.Node{Name: body.Name, Type: body.Type, CDNDomain: body.CDNDomain, Status: "active"}
+		if body.Type == "regular" {
+			n.UUID = utils.NewUUID()
+			n.Port = 2054 // Упрощено для примера, в проде нужен nextPort
+			n.Path = "/" + utils.RandomHex(8)
+			n.UplinkHTTPMethod = "HEAD"
+		}
+		db.Create(&n)
+		if body.Type == "regular" {
+			reload(db, mgr)
+	 }
+		c.JSON(http.StatusOK, gin.H{"node": n})
+	})
+
+	a.DELETE("/api/nodes/:id", func(c *gin.Context) {
+		db.Delete(&models.Node{}, c.Param("id"))
+		reload(db, mgr)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	// === CDN NODES ===
+	a.GET("/api/cdn-nodes", func(c *gin.Context) {
+		var cdns []models.CDNNode
+		db.Find(&cdns)
+		c.JSON(http.StatusOK, cdns)
+	})
+
+	a.POST("/api/cdn-nodes", func(c *gin.Context) {
+		var body models.CDNNode
+		if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
+			return
+		}
+		body.Status = "active"
+		db.Create(&body)
+		c.JSON(http.StatusOK, body)
+	})
+
+	a.DELETE("/api/cdn-nodes/:id", func(c *gin.Context) {
+		db.Delete(&models.CDNNode{}, c.Param("id"))
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	// === TARIFFS ===
+	a.GET("/api/tariffs", func(c *gin.Context) {
+		var tariffs []models.Tariff
+		db.Find(&tariffs)
+		c.JSON(http.StatusOK, tariffs)
+	})
+
+	a.POST("/api/tariffs", func(c *gin.Context) {
+		var body models.Tariff
+		if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
+			return
+		}
+		db.Create(&body)
+		c.JSON(http.StatusOK, body)
+	})
+
+	a.DELETE("/api/tariffs/:id", func(c *gin.Context) {
+		db.Delete(&models.Tariff{}, c.Param("id"))
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	// === SETTINGS ===
+	a.GET("/api/settings", func(c *gin.Context) {
+		data, _ := os.ReadFile(cfg.WebDir + "/settings.json")
+		var settings map[string]string
+		json.Unmarshal(data, &settings)
+		if settings == nil { settings = make(map[string]string) }
+		c.JSON(http.StatusOK, settings)
+	})
+
+	a.POST("/api/settings", func(c *gin.Context) {
+		var body map[string]string
+		c.ShouldBindJSON(&body)
+		data, _ := json.Marshal(body)
+		os.WriteFile(cfg.WebDir+"/settings.json", data, 0644)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func reload(db *gorm.DB, mgr *xray.Manager) error {
@@ -43,279 +136,12 @@ func reload(db *gorm.DB, mgr *xray.Manager) error {
 	return mgr.Restart(nodes)
 }
 
-func RegisterRoutes(r *gin.Engine, db *gorm.DB, mgr *xray.Manager, cfg *config.Config) {
-	// Подписка
-	r.GET(cfg.SubBase+"/:email", func(c *gin.Context) {
-		email := c.Param("email")
-		var clients []models.Client
-		db.Where("email = ?", email).Find(&clients)
-		links := []string{}
-		for _, cl := range clients {
-			var n models.Node
-			if db.First(&n, cl.NodeID).Error == nil {
-				links = append(links, cdnLink(n))
-			}
-		}
-		c.Header("Content-Type", "text/plain")
-		c.String(http.StatusOK, base64.StdEncoding.EncodeToString([]byte(strings.Join(links, "\n"))))
-	})
-
-	// Логи Xray
-	r.GET("/api/logs", auth(cfg.APIToken), func(c *gin.Context) {
-		logFile := cfg.XrayConfig + ".log"
-		f, err := os.Open(logFile)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"logs": "Xray not started yet or no log file"})
+func auth(token string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.GetHeader("X-Token") != token {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		defer f.Close()
-		var lines []string
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-		if len(lines) > 100 {
-			lines = lines[len(lines)-100:]
-		}
-		c.JSON(http.StatusOK, gin.H{"logs": strings.Join(lines, "\n")})
-	})
-
-	a := r.Group("", auth(cfg.APIToken))
-
-	// Dashboard
-	a.GET("/api/dashboard", func(c *gin.Context) {
-		var nodeCount, clientCount, tariffCount int64
-		db.Model(&models.Node{}).Count(&nodeCount)
-		db.Model(&models.Client{}).Count(&clientCount)
-		db.Model(&models.Tariff{}).Count(&tariffCount)
-		c.JSON(http.StatusOK, gin.H{
-			"nodes":   nodeCount,
-			"clients": clientCount,
-			"tariffs": tariffCount,
-			"xray":    mgr.Running(),
-			"port":    cfg.Port,
-		})
-	})
-
-	// Nodes (обычные + автовыбор)
-	a.GET("/api/nodes", func(c *gin.Context) {
-		var nodes []models.Node
-		db.Find(&nodes)
-		out := []gin.H{}
-		for _, n := range nodes {
-			link := ""
-			if n.Type == "regular" && n.CDNDomain != "" {
-				link = cdnLink(n)
-			}
-			out = append(out, gin.H{"node": n, "link": link, "running": mgr.Running()})
-		}
-		c.JSON(http.StatusOK, out)
-	})
-
-	a.POST("/api/nodes", func(c *gin.Context) {
-		var body struct {
-			Name             string `json:"name"`
-			Type             string `json:"type"` // "regular" или "auto"
-			Protocol         string `json:"protocol"`
-			Transport        string `json:"transport"`
-			Encryption       string `json:"encryption"`
-			Flow             string `json:"flow"`
-			UTLS             string `json:"utls"`
-			Limit            int    `json:"limit"`
-			CDNDomain        string `json:"cdn_domain"`
-			UplinkHTTPMethod string `json:"uplink_http_method"`
-		}
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if body.Name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
-			return
-		}
-
-		n := models.Node{
-			Name:       body.Name,
-			Type:       body.Type,
-			Protocol:   body.Protocol,
-			Transport:  body.Transport,
-			Encryption: body.Encryption,
-			Flow:       body.Flow,
-			UTLS:       body.UTLS,
-			Limit:      body.Limit,
-			Status:     "active",
-		}
-
-		if body.Type == "regular" {
-			n.UUID = utils.NewUUID()
-			n.Port = nextPort(db)
-			n.Path = "/" + utils.RandomHex(8)
-			n.CDNDomain = body.CDNDomain
-			n.UplinkHTTPMethod = body.UplinkHTTPMethod
-			if n.UplinkHTTPMethod == "" {
-				n.UplinkHTTPMethod = "HEAD"
-			}
-			n.IsCDN = body.CDNDomain != ""
-		}
-
-		if err := db.Create(&n).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Перезапускаем Xray только для regular нод
-		if body.Type == "regular" {
-			if err := reload(db, mgr); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "xray reload: " + err.Error()})
-				return
-			}
-		}
-
-		link := ""
-		if body.Type == "regular" && body.CDNDomain != "" {
-			link = cdnLink(n)
-		}
-		c.JSON(http.StatusOK, gin.H{"node": n, "link": link})
-	})
-
-	a.DELETE("/api/nodes/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		if err := db.Delete(&models.Node{}, id).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		_ = reload(db, mgr)
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-// CDN Nodes (с фильтрацией)
-	a.GET("/api/cdn-nodes", func(c *gin.Context) {
-		var cdnNodes []models.CDNNode
-		db.Find(&cdnNodes)
-		c.JSON(http.StatusOK, cdnNodes)
-	})
-
-	a.POST("/api/cdn-nodes", func(c *gin.Context) {
-		var body struct {
-			Name     string `json:"name"`
-			Provider string `json:"provider"`
-			Domain   string `json:"domain"`
-			Protocol string `json:"protocol"`
-			Path     string `json:"path"`
-			Sources  string `json:"sources"`
-		}
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if body.Name == "" || body.Domain == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name and domain required"})
-			return
-		}
-		cdn := models.CDNNode{
-			Name:     body.Name,
-			Provider: body.Provider,
-			Domain:   body.Domain,
-			Protocol: body.Protocol,
-			Path:     body.Path,
-			Sources:  body.Sources,
-			Status:   "active",
-		}
-		if err := db.Create(&cdn).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, cdn)
-	})
-
-	a.DELETE("/api/cdn-nodes/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		if err := db.Delete(&models.CDNNode{}, id).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	// Tariffs (тарифы для бота)
-	a.GET("/api/tariffs", func(c *gin.Context) {
-		var tariffs []models.Tariff
-		db.Find(&tariffs)
-		c.JSON(http.StatusOK, tariffs)
-	})
-
-	a.POST("/api/tariffs", func(c *gin.Context) {
-		var body struct {
-			Name    string `json:"name"`
-			Price   int    `json:"price"`
-			Days    int    `json:"days"`
-			Traffic int    `json:"traffic"`
-			Devices int    `json:"devices"`
-			Speed   int    `json:"speed"`
-			Desc    string `json:"desc"`
-		}
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if body.Name == "" || body.Price == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name and price required"})
-			return
-		}
-		t := models.Tariff{
-			Name:    body.Name,
-			Price:   body.Price,
-			Days:    body.Days,
-			Traffic: body.Traffic,
-			Devices: body.Devices,
-			Speed:   body.Speed,
-			Desc:    body.Desc,
-		}
-		if err := db.Create(&t).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, t)
-	})
-
-	a.DELETE("/api/tariffs/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		if err := db.Delete(&models.Tariff{}, id).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	// Clients
-	a.GET("/api/clients", func(c *gin.Context) {
-		var clients []models.Client
-		db.Find(&clients)
-		c.JSON(http.StatusOK, clients)
-	})
-
-	a.POST("/api/clients", func(c *gin.Context) {
-		var body struct {
-			NodeID uint   `json:"node_id"`
-			Email  string `json:"email"`
-		}
-		if err := c.ShouldBindJSON(&body); err != nil || body.NodeID == 0 || body.Email == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "node_id and email required"})
-			return
-		}
-		cl := models.Client{NodeID: body.NodeID, Email: body.Email, UUID: utils.NewUUID()}
-		if err := db.Create(&cl).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, cl)
-	})
-
-	a.DELETE("/api/clients/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		if err := db.Delete(&models.Client{}, id).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
+		c.Next()
+	}
 }

@@ -86,7 +86,7 @@ func (m *Manager) Stop() {
 	defer m.mu.Unlock()
 	if m.cmd != nil && m.cmd.Process != nil {
 		_ = m.cmd.Process.Kill()
-		_, _ = m.cmd.Wait()
+		_ = m.cmd.Wait()
 		m.cmd = nil
 	}
 }

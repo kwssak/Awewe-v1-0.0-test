@@ -47,23 +47,28 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, mgr *xray.Manager, cfg *config.C
 			c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
 			return
 		}
-		n := models.Node{Name: body.Name, Type: body.Type, CDNDomain: body.CDNDomain, Status: "active"}
+		n := models.Node{
+			Name:      body.Name,
+			Type:      body.Type,
+			CDNDomain: body.CDNDomain,
+			Status:    "active",
+		}
 		if body.Type == "regular" {
 			n.UUID = utils.NewUUID()
-			n.Port = 2054 // Упрощено для примера, в проде нужен nextPort
+			n.Port = 2054 // В проде можно сделать автоинкремент
 			n.Path = "/" + utils.RandomHex(8)
 			n.UplinkHTTPMethod = "HEAD"
 		}
 		db.Create(&n)
 		if body.Type == "regular" {
-			reload(db, mgr)
-	 }
+			_ = reload(db, mgr)
+		}
 		c.JSON(http.StatusOK, gin.H{"node": n})
 	})
 
 	a.DELETE("/api/nodes/:id", func(c *gin.Context) {
 		db.Delete(&models.Node{}, c.Param("id"))
-		reload(db, mgr)
+		_ = reload(db, mgr)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
 
@@ -117,15 +122,20 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB, mgr *xray.Manager, cfg *config.C
 		data, _ := os.ReadFile(cfg.WebDir + "/settings.json")
 		var settings map[string]string
 		json.Unmarshal(data, &settings)
-		if settings == nil { settings = make(map[string]string) }
+		if settings == nil {
+			settings = make(map[string]string)
+		}
 		c.JSON(http.StatusOK, settings)
 	})
 
 	a.POST("/api/settings", func(c *gin.Context) {
 		var body map[string]string
-		c.ShouldBindJSON(&body)
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+			return
+		}
 		data, _ := json.Marshal(body)
-		os.WriteFile(cfg.WebDir+"/settings.json", data, 0644)
+		_ = os.WriteFile(cfg.WebDir+"/settings.json", data, 0644)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
 }
@@ -134,14 +144,4 @@ func reload(db *gorm.DB, mgr *xray.Manager) error {
 	var nodes []models.Node
 	db.Where("type = ?", "regular").Find(&nodes)
 	return mgr.Restart(nodes)
-}
-
-func auth(token string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.GetHeader("X-Token") != token {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-		c.Next()
-	}
 }

@@ -1,0 +1,38 @@
+cd /root/awewe-panel   # или где клон репо
+
+cat > .gitignore << 'EOF'
+# Бинарники
+backend/bin/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Базы данных
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Логи
+*.log
+logs/
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Temp
+tmp/
+EOF
+
+git add install.sh .gitignore
+git commit -m "add install.sh and .gitignore"
+git push

@@ -14,7 +14,13 @@ func Init(path string) error {
 	if err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&models.Node{}, &models.Client{}); err != nil {
+	// AutoMigrate для всех моделей
+	if err := db.AutoMigrate(
+		&models.Node{},
+		&models.Client{},
+		&models.Tariff{},
+		&models.CDNNode{},
+	); err != nil {
 		return err
 	}
 	DB = db
